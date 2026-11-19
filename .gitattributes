@@ -1,0 +1,4 @@
+# Line endings: store every text file in the repository with LF line endings.
+# Git converts them for each computer's working copy, so the repository is
+# consistent no matter which operating system (or Git setting) is used.
+* text=auto
