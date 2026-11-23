@@ -62,6 +62,8 @@ No application code has been written yet.
 
 ## Environment
 Windows, PowerShell. Hosting: Vercel (via GitHub).
+GitHub repository (public): https://github.com/ywbranche/snake-game
+(remote `origin`, branch `main`). Vercel is not connected yet.
 Managed (enterprise) machine: install software from Company Portal first,
 then winget only with the owner's approval.
 - Git 2.56.0.windows.2: installed via Company Portal (machine-wide).
