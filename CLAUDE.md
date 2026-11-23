@@ -69,7 +69,7 @@ then winget only with the owner's approval.
   core.editor="code --wait", init.defaultBranch=main.
 - VS Code 1.89.0: installed via Company Portal (machine-wide). This version
   is old (spring 2024); updating is pending.
-- Node.js: not yet installed. Not in Company Portal; the official installer
-  (LTS 26.x) is machine-wide only and needs admin rights. Owner requested
-  local admin access from IT on 2026-11-19. Node is not on the critical
-  path until local server/tests are needed.
+- Node.js v26.13.1 LTS (npm 11.20.0): installed 2026-11-23 via winget,
+  machine-wide. Owner has admin rights (approved by IT); elevation prompts
+  must be answered by the owner, so installs needing admin should be run
+  by the owner in their own terminal, not from Claude's session.
