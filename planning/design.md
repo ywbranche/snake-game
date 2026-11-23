@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Project** | Project 001 – Snake Game |
-| **Document version** | 1.0 |
+| **Document version** | 1.1 |
 | **Status** | **Approved by owner (2026-11-23)** |
 | **Date** | 2026-11-23 |
 | **Based on** | `planning/requirements.md` v1.0 |
@@ -201,7 +201,7 @@ Order matters. Each step does the following:
    - If the snake now fills all 400 cells → `status = "won"`, `food = null` (FR-14).
    - Otherwise place new food (5.3).
 
-`step()` reports what happened (e.g. "ate food", "died", "won") so `main.js` can update the HUD, the screens, and storage.
+`step(game)` is **pure**: it never changes the state it's given, and returns a **new** game state. `main.js` learns what happened by reading the new state: `status` became `"dead"` or `"won"`, or `score` increased (food was eaten). It then updates the HUD, the screens, and storage. *(Clarified in v1.1; previously "step() reports what happened".)*
 
 #### 5.2.1 Tail-collision rule (explicit)
 
@@ -423,3 +423,4 @@ No open questions remain.
 | 0.1 | 2026-11-23 | First draft for owner review. |
 | 0.2 | 2026-11-23 | Owner decisions A1–A8 recorded. A7 changed to 1 queued turn (§3.1, §5.4, §6, §7.1). Contrast values replaced with calculated ratios. Tail-collision rule made explicit (§5.2.1) with dedicated tests (T-TAIL-1 to 5); the incorrect "eating" exception from v0.1 removed. Open question Q1 added, then resolved: (a) ignore extra presses. Still a draft. |
 | 1.0 | 2026-11-23 | Assumptions confirmed; design approved by owner for the Implementation phase. |
+| 1.1 | 2026-11-23 | §5.2 clarified with owner approval: `step()` returns only the new state, and events are read from it (`status`, `score`). No behavior change. |

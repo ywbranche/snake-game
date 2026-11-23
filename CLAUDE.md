@@ -48,7 +48,8 @@ Current: Implementation (started 2026-11-23). Follow the implementation
 order in design.md §8, building game.js test-first (TDD). Work in small
 steps (1a, 1b, 1c…) and stop for owner review after each one.
 Done so far: 1a package.json, 1b js/config.js, 1c first failing test,
-1d createGame() in js/game.js (test passing). Next: movement step (TDD).
+1d createGame() in js/game.js (test passing), 2 step(): movement and
+wraparound (12 tests passing). Next: turning / direction queue (TDD).
 
 ## Key documents
 - planning/requirements.md: approved requirements (FR-*, NFR-*, TC-*, AC-*)
