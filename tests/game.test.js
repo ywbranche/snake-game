@@ -12,7 +12,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createGame, step } from "../js/game.js";
+import { createGame, step, queueTurn } from "../js/game.js";
 
 // ── Test helper ─────────────────────────────────────────────────────────────
 // Most tests need the snake somewhere specific (e.g. at an edge). This helper
@@ -146,5 +146,81 @@ describe("wraparound", () => {
       direction: "right",
     });
     assert.equal(step(game).status, "running");
+  });
+});
+
+// ── Turning: the direction queue (FR-4, design §5.4, decisions A7 + Q1) ─────
+// queueTurn(game, direction) is how a key press asks the snake to turn.
+// The turn isn't applied immediately: it waits in `directionQueue` and is
+// applied by the next step(). At most ONE turn can wait at a time.
+// A new game moves "right", so in these tests "left" is the reversal.
+
+describe("turning", () => {
+  test("a valid turn waits in the queue and is not applied yet", () => {
+    const game = queueTurn(createGame(), "up");
+
+    assert.deepEqual(game.directionQueue, ["up"]);
+    assert.equal(game.direction, "right"); // still moving right until the next step
+  });
+
+  test("the next step applies the waiting turn and empties the queue", () => {
+    const next = step(queueTurn(createGame(), "up"));
+
+    assert.equal(next.direction, "up");
+    assert.deepEqual(next.snake[0], { x: 10, y: 9 }); // moved up, not right
+    assert.deepEqual(next.directionQueue, []);
+  });
+
+  test("a reversal (opposite of the current direction) is ignored", () => {
+    const game = queueTurn(createGame(), "left");
+    assert.deepEqual(game.directionQueue, []);
+  });
+
+  test("pressing the current direction again is ignored", () => {
+    const game = queueTurn(createGame(), "right");
+    assert.deepEqual(game.directionQueue, []);
+  });
+
+  test("a second press while a turn is waiting is ignored (first press wins)", () => {
+    // "down" would be valid on its own, but a turn is already waiting.
+    const game = queueTurn(queueTurn(createGame(), "up"), "down");
+    assert.deepEqual(game.directionQueue, ["up"]);
+  });
+
+  test("'up then left' pressed within one step can never reverse the snake", () => {
+    // Moving right. The player quickly presses up, then left.
+    let game = queueTurn(createGame(), "up");
+    game = queueTurn(game, "left"); // ignored: a turn is already waiting
+
+    game = step(game); // applies "up"
+    assert.equal(game.direction, "up");
+
+    game = step(game); // nothing waiting, so it keeps going up
+    assert.equal(game.direction, "up");
+    assert.deepEqual(game.snake[0], { x: 10, y: 8 });
+  });
+
+  test("after a step applies a turn, a new turn can be queued", () => {
+    let game = step(queueTurn(createGame(), "up")); // now moving up
+    game = queueTurn(game, "left"); //                 valid when moving up
+
+    assert.deepEqual(game.directionQueue, ["left"]);
+  });
+
+  test("reversal is checked against the direction after the last turn", () => {
+    // After turning up, "down" is now the reversal, and "right" is allowed again.
+    const movingUp = step(queueTurn(createGame(), "up"));
+
+    assert.deepEqual(queueTurn(movingUp, "down").directionQueue, []);
+    assert.deepEqual(queueTurn(movingUp, "right").directionQueue, ["right"]);
+  });
+
+  test("does not change the original game state (queueTurn is pure)", () => {
+    const game = createGame();
+    const before = structuredClone(game);
+
+    queueTurn(game, "up");
+
+    assert.deepEqual(game, before);
   });
 });
