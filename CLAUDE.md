@@ -44,9 +44,11 @@ development partner.
 Requirements: complete (v1.0, approved by owner 2026-11-19).
 Environment Setup: complete (VS Code update to newer than 1.89 still pending).
 Architecture & Design: complete (design.md v1.0, approved by owner 2026-11-23).
-Next: Implementation (not started; requires owner go-ahead). Follow the
-implementation order in design.md §8, starting with game.js using TDD.
-No application code has been written yet.
+Current: Implementation (started 2026-11-23). Follow the implementation
+order in design.md §8, building game.js test-first (TDD). Work in small
+steps (1a, 1b, 1c…) and stop for owner review after each one.
+Done so far: 1a package.json, 1b js/config.js, 1c first failing test,
+1d createGame() in js/game.js (test passing). Next: movement step (TDD).
 
 ## Key documents
 - planning/requirements.md: approved requirements (FR-*, NFR-*, TC-*, AC-*)
