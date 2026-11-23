@@ -42,13 +42,16 @@ development partner.
 
 ## Current phase
 Requirements: complete (v1.0, approved by owner 2026-11-19).
-Current: Environment Setup (installing and configuring Node.js, Git,
-VS Code, GitHub). Install nothing without the owner's approval.
-Next: Architecture & Design (not started; requires owner approval).
+Environment Setup: complete (VS Code update to newer than 1.89 still pending).
+Architecture & Design: complete (design.md v1.0, approved by owner 2026-11-23).
+Next: Implementation (not started; requires owner go-ahead). Follow the
+implementation order in design.md §8, starting with game.js using TDD.
 No application code has been written yet.
 
 ## Key documents
 - planning/requirements.md: approved requirements (FR-*, NFR-*, TC-*, AC-*)
+- planning/design.md: approved architecture, config values, test plan
+  (A1–A8 decisions, T-TAIL-* tests). Follow it; propose changes, don't drift.
 - Reference requirement IDs in design notes, code comments, tests, and commits.
 
 ## Technical rules (see requirements §5)
