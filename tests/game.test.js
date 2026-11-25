@@ -395,3 +395,116 @@ describe("speed", () => {
     assert.ok(stepInterval(MAX_LEVEL - 1) > MIN_STEP_MS);
   });
 });
+
+// ── Self-collision (FR-10, design §5.2.1, tests T-TAIL-1 to 5) ──────────────
+// Rule: the head may move into the cell the TAIL is in (the tail leaves that
+// cell in the same step). Moving into any other body cell ends the game.
+//
+// Many of these tests use a 2×2 loop. Picture it (H = head, T = tail):
+//
+//      x=5  x=6
+//  y=5  H ← T      the head at (5,5) moving right would enter (6,5),
+//  y=6  ■ → ■      which is exactly where the tail is.
+
+describe("self-collision", () => {
+  test("running into the middle of the body ends the game", () => {
+    const game = gameWith({
+      snake: [
+        { x: 5, y: 5 }, // head, about to move right into (6, 5)
+        { x: 5, y: 6 },
+        { x: 6, y: 6 },
+        { x: 6, y: 5 }, // ← middle of the body
+        { x: 6, y: 4 },
+        { x: 6, y: 3 }, // tail
+      ],
+      direction: "right",
+    });
+    const next = step(game, alwaysZero);
+
+    assert.equal(next.status, "dead");
+    assert.deepEqual(next.snake, game.snake); // the snake doesn't move into itself
+  });
+
+  test("T-TAIL-1: moving into the tail's cell is allowed (2×2 loop)", () => {
+    const game = gameWith({
+      snake: [{ x: 5, y: 5 }, { x: 5, y: 6 }, { x: 6, y: 6 }, { x: 6, y: 5 }],
+      direction: "right",
+    });
+    const next = step(game, alwaysZero);
+
+    assert.equal(next.status, "running");
+    assert.deepEqual(next.snake, [
+      { x: 6, y: 5 }, // head moved into the old tail cell
+      { x: 5, y: 5 },
+      { x: 5, y: 6 },
+      { x: 6, y: 6 }, // new tail
+    ]);
+  });
+
+  test("T-TAIL-2: moving into the segment just before the tail ends the game", () => {
+    // Same loop, but one segment longer: (6, 5) is now second-to-last.
+    const game = gameWith({
+      snake: [
+        { x: 5, y: 5 },
+        { x: 5, y: 6 },
+        { x: 6, y: 6 },
+        { x: 6, y: 5 }, // ← just before the tail
+        { x: 7, y: 5 }, //   tail
+      ],
+      direction: "right",
+    });
+
+    assert.equal(step(game, alwaysZero).status, "dead");
+  });
+
+  test("T-TAIL-3: chasing its own tail around a 2×2 loop never dies", () => {
+    // Head at (5, 5) arrived by moving up. Turning right, down, left, up on
+    // each step keeps the head going round, always into the tail's cell.
+    let game = gameWith({
+      snake: [{ x: 5, y: 5 }, { x: 5, y: 6 }, { x: 6, y: 6 }, { x: 6, y: 5 }],
+      direction: "up",
+    });
+    const turns = ["right", "down", "left", "up"];
+
+    for (let lap = 0; lap < 3; lap++) {
+      for (const turn of turns) {
+        game = step(queueTurn(game, turn), alwaysZero);
+        assert.equal(game.status, "running", `died on lap ${lap + 1} turning ${turn}`);
+      }
+    }
+    assert.equal(game.snake.length, 4); // still the same snake, no growth
+  });
+
+  test("T-TAIL-4: right after eating, moving into the tail's cell is still allowed", () => {
+    // Eat food at (5, 5): the snake grows to the 2×2 loop and its tail stays at (6, 5).
+    let game = gameWith({
+      snake: [{ x: 5, y: 6 }, { x: 6, y: 6 }, { x: 6, y: 5 }],
+      direction: "up",
+      food: { x: 5, y: 5 },
+    });
+    game = step(game, alwaysZero);
+    assert.equal(game.snake.length, 4); // it ate and grew
+    assert.deepEqual(game.snake.at(-1), { x: 6, y: 5 }); // tail didn't move
+
+    // Next step: turn right into (6, 5), the tail's cell. The tail leaves now.
+    game = step(queueTurn(game, "right"), alwaysZero);
+    assert.equal(game.status, "running");
+  });
+
+  test("T-TAIL-5: the tail's cell reached through wraparound is allowed", () => {
+    // The same 2×2 loop, split across the left and right edges.
+    const game = gameWith({
+      snake: [{ x: 19, y: 5 }, { x: 19, y: 6 }, { x: 0, y: 6 }, { x: 0, y: 5 }],
+      direction: "right",
+    });
+    const next = step(game, alwaysZero);
+
+    assert.equal(next.status, "running");
+    assert.deepEqual(next.snake[0], { x: 0, y: 5 });
+  });
+
+  test("a finished game no longer changes when stepped", () => {
+    const deadGame = gameWith({ status: "dead" });
+    assert.equal(step(deadGame, alwaysZero), deadGame);
+  });
+});

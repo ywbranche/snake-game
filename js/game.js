@@ -118,8 +118,8 @@ export function placeFood(snake, random) {
  * `status` or `score`).
  *
  * Implemented so far: turning (FR-4), movement (FR-3), wraparound (FR-5),
- * and eating: growth, scoring, levels, new food (FR-6, FR-7, FR-8).
- * Still to come, each with its own tests first: collisions, victory.
+ * self-collision (FR-10), and eating: growth, scoring, levels, new food
+ * (FR-6, FR-7, FR-8). Still to come, with its own tests first: victory.
  *
  * @param {object} game - The current game state.
  * @param {() => number} [random=Math.random] - Used to place new food after
@@ -127,6 +127,12 @@ export function placeFood(snake, random) {
  * @returns {object} The game state after one step.
  */
 export function step(game, random = Math.random) {
+  // 0. A finished game ("dead" or "won") never changes. Return the very same
+  //    object, so callers can tell nothing happened.
+  if (game.status !== "running") {
+    return game;
+  }
+
   // 1. Turn: if a turn is waiting, it becomes the direction for THIS step
   //    (FR-4). This must happen before the head moves, so the snake moves in
   //    the new direction straight away.
@@ -146,6 +152,22 @@ export function step(game, random = Math.random) {
     x: wrap(head.x + dx, GRID_COLUMNS),
     y: wrap(head.y + dy, GRID_ROWS),
   };
+
+  // 2b. Self-collision (FR-10, design §5.2.1). Compare the new head with
+  //     every segment EXCEPT the current tail: on this step the tail moves
+  //     out of its cell as the head moves in, so they never actually touch.
+  //     (On an eating step the tail stays, but then the head is on the food,
+  //     and food is never placed on the snake, so excluding the tail is
+  //     still correct. That's why this check can come before step 3.)
+  const bodyWithoutTail = game.snake.slice(0, -1);
+  const hitsBody = bodyWithoutTail.some(
+    (cell) => cell.x === newHead.x && cell.y === newHead.y,
+  );
+
+  if (hitsBody) {
+    // Game over. The snake stays where it was; it doesn't move into itself.
+    return { ...game, direction, directionQueue: remainingQueue, status: "dead" };
+  }
 
   // 3. Will the snake eat? (The food can be null only after victory.)
   const ateFood =
