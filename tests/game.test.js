@@ -508,3 +508,68 @@ describe("self-collision", () => {
     assert.equal(step(deadGame, alwaysZero), deadGame);
   });
 });
+
+// ── Victory (FR-14, design §5.2 step 6) ─────────────────────────────────────
+// To test victory we need a snake that fills almost the whole board. This
+// helper lists all 400 cells in "lawnmower" order: row 0 left→right, row 1
+// right→left, row 2 left→right, and so on. Each cell in the list is next to
+// the one before it, so any run of this list is a valid snake body.
+//
+//   row 0:  (0,0) → (1,0) → … → (19,0)
+//                                   ↓
+//   row 1:  (0,1) ← … ← (18,1) ← (19,1)
+//             ↓
+//   row 2:  (0,2) → …
+
+function lawnmowerPath() {
+  const path = [];
+  for (let y = 0; y < GRID_ROWS; y++) {
+    for (let i = 0; i < GRID_COLUMNS; i++) {
+      const x = y % 2 === 0 ? i : GRID_COLUMNS - 1 - i; // even rows go right, odd rows go left
+      path.push({ x, y });
+    }
+  }
+  return path;
+}
+
+describe("victory", () => {
+  test("eating the last food, filling all 400 cells, wins the game", () => {
+    const path = lawnmowerPath();
+    // Snake = every cell except path[0] = (0, 0). Head at path[1] = (1, 0),
+    // moving left toward (0, 0), where the last food is.
+    const game = gameWith({
+      snake: path.slice(1), // 399 segments, head first
+      direction: "left",
+      food: path[0],
+      level: MAX_LEVEL,
+      score: 5000,
+    });
+    const next = step(game, alwaysZero);
+
+    assert.equal(next.snake.length, GRID_COLUMNS * GRID_ROWS); // 400
+    assert.equal(next.status, "won");
+    assert.equal(next.food, null); // nowhere left for food
+    assert.equal(next.score, 5160); // the winning bite still scores 10 × 16
+  });
+
+  test("eating with one cell still empty does NOT win; food goes to that cell", () => {
+    const path = lawnmowerPath();
+    // Snake = every cell except path[0] and path[1]. Head at path[2] = (2, 0)
+    // moving left to eat food at path[1]. Afterwards only (0, 0) is empty.
+    const game = gameWith({
+      snake: path.slice(2), // 398 segments
+      direction: "left",
+      food: path[1],
+    });
+    const next = step(game, alwaysZero);
+
+    assert.equal(next.snake.length, 399);
+    assert.equal(next.status, "running");
+    assert.deepEqual(next.food, { x: 0, y: 0 }); // the only empty cell left
+  });
+
+  test("a won game no longer changes when stepped", () => {
+    const wonGame = gameWith({ status: "won", food: null });
+    assert.equal(step(wonGame, alwaysZero), wonGame);
+  });
+});

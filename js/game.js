@@ -118,8 +118,8 @@ export function placeFood(snake, random) {
  * `status` or `score`).
  *
  * Implemented so far: turning (FR-4), movement (FR-3), wraparound (FR-5),
- * self-collision (FR-10), and eating: growth, scoring, levels, new food
- * (FR-6, FR-7, FR-8). Still to come, with its own tests first: victory.
+ * self-collision (FR-10), eating: growth, scoring, levels, new food
+ * (FR-6, FR-7, FR-8), and victory when the board is full (FR-14).
  *
  * @param {object} game - The current game state.
  * @param {() => number} [random=Math.random] - Used to place new food after
@@ -194,7 +194,23 @@ export function step(game, random = Math.random) {
   const score = game.score + POINTS_PER_LEVEL * game.level;
   const level = Math.min(game.level + 1, MAX_LEVEL);
 
-  // 7. New food, placed using the snake AFTER it has moved and grown, so the
+  // 7. Victory (FR-14): the snake now fills every cell on the board.
+  //    We check the length directly, rather than waiting for placeFood to
+  //    return null, so the reason for winning is stated plainly in the code.
+  if (snake.length === GRID_COLUMNS * GRID_ROWS) {
+    return {
+      ...game,
+      snake,
+      direction,
+      directionQueue: remainingQueue,
+      food: null, // nowhere left to put food
+      score,
+      level,
+      status: "won",
+    };
+  }
+
+  // 8. New food, placed using the snake AFTER it has moved and grown, so the
   //    food can't appear under the new head.
   const food = placeFood(snake, random);
 

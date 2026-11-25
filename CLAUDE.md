@@ -51,10 +51,12 @@ Done so far: 1a package.json, 1b js/config.js, 1c first failing test,
 1d createGame() in js/game.js (test passing), 2 step(): movement and
 wraparound, 3 queueTurn() + turning in step(), 4a/4b placeFood() and
 createGame(random), 4c/4d eating in step(game, random) + stepInterval(level)
-(36 tests), 5 self-collision incl. T-TAIL-1..5 + finished-game guard
-(43 tests passing). Tests use newGame() = createGame(() => 0) so food
+(36 tests), 5 self-collision incl. T-TAIL-1..5 + finished-game guard,
+6 victory (46 tests passing). js/game.js now implements every gameplay rule
+(FR-3–FR-8, FR-10, FR-14). Tests use newGame() = createGame(() => 0) so food
 placement is predictable.
-Next: 6 victory (TDD), then state-machine.js and input.js.
+Next: state-machine.js and input.js (pure, TDD), then the browser side
+(design §8 steps 3–8).
 
 ## Key documents
 - planning/requirements.md: approved requirements (FR-*, NFR-*, TC-*, AC-*)
