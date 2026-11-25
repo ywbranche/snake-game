@@ -38,15 +38,21 @@ const OPPOSITES = Object.freeze({
  * Create the state for a brand-new game (design §3.1).
  *
  * The snake starts at START_POSITION, facing START_DIRECTION, with its body
- * trailing out behind the head (in the opposite direction).
+ * trailing out behind the head (in the opposite direction). Food is placed on
+ * a random empty cell.
  *
+ * @param {() => number} [random=Math.random] - Returns a number from 0 up to
+ *   (not including) 1. The real game uses Math.random; tests pass a
+ *   predictable stand-in (dependency injection, design §5.3).
  * @returns {object} A new game state.
  */
-export function createGame() {
+export function createGame(random = Math.random) {
   const { dx, dy } = DIRECTIONS[START_DIRECTION];
 
   // Build the snake head-first. Segment 0 is the head; each next segment is
   // one cell further BEHIND it, i.e. one step against the direction of travel.
+  // (Using `push` is fine here: this is a brand-new local array that no other
+  // code can see yet. Purity is about not changing data we were GIVEN.)
   const snake = [];
   for (let i = 0; i < START_LENGTH; i++) {
     snake.push({
@@ -59,11 +65,44 @@ export function createGame() {
     snake,
     direction: START_DIRECTION,
     directionQueue: [], // no turn waiting yet (FR-4)
-    food: null, //         food placement comes in a later step, with its own test
+    food: placeFood(snake, random), // FR-6
     score: 0,
     level: 1,
     status: "running", //  "running" | "dead" | "won"
   };
+}
+
+/**
+ * Choose a random empty cell for the food (FR-6, design §5.3).
+ *
+ * Lists every cell the snake does NOT occupy (row by row, from the top-left),
+ * then uses `random` to pick one. Because only empty cells are in the list,
+ * the food can never land on the snake.
+ *
+ * @param {Array<{x: number, y: number}>} snake - The snake's cells.
+ * @param {() => number} random - Returns a number from 0 up to (not including) 1.
+ * @returns {{x: number, y: number} | null} The food's cell, or null if the
+ *   board is completely full (only possible at victory).
+ */
+export function placeFood(snake, random) {
+  const emptyCells = [];
+  for (let y = 0; y < GRID_ROWS; y++) {
+    for (let x = 0; x < GRID_COLUMNS; x++) {
+      const onSnake = snake.some((cell) => cell.x === x && cell.y === y);
+      if (!onSnake) {
+        emptyCells.push({ x, y });
+      }
+    }
+  }
+
+  if (emptyCells.length === 0) {
+    return null; // nowhere left to put food
+  }
+
+  // random() is in [0, 1), so random() × length is in [0, length).
+  // Math.floor rounds DOWN, giving a whole index from 0 to length − 1.
+  const index = Math.floor(random() * emptyCells.length);
+  return emptyCells[index];
 }
 
 /**
