@@ -50,9 +50,10 @@ steps (1a, 1b, 1c…) and stop for owner review after each one.
 Done so far: 1a package.json, 1b js/config.js, 1c first failing test,
 1d createGame() in js/game.js (test passing), 2 step(): movement and
 wraparound, 3 queueTurn() + turning in step(), 4a/4b placeFood() and
-createGame(random) (26 tests passing). Tests use newGame() = createGame(() => 0)
-so food placement is predictable.
-Next: 4c/4d eating — growth, scoring, levels, speed (TDD).
+createGame(random), 4c/4d eating in step(game, random) + stepInterval(level)
+(36 tests passing). Tests use newGame() = createGame(() => 0) so food
+placement is predictable.
+Next: 5 self-collision incl. T-TAIL-1..5 (TDD), then 6 victory.
 
 ## Key documents
 - planning/requirements.md: approved requirements (FR-*, NFR-*, TC-*, AC-*)

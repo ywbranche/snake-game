@@ -5,7 +5,7 @@
 // That's what lets us test it with Node, without a browser (design §1, TC-8).
 //
 // Design reference: planning/design.md §3.1 (game state), §5.2 (one step),
-// §5.4 (direction queue).
+// §5.3 (food), §5.4 (direction queue), §6 (speed).
 
 import {
   GRID_COLUMNS,
@@ -14,6 +14,11 @@ import {
   START_LENGTH,
   START_DIRECTION,
   MAX_QUEUED_TURNS,
+  BASE_STEP_MS,
+  SPEED_FACTOR,
+  MIN_STEP_MS,
+  MAX_LEVEL,
+  POINTS_PER_LEVEL,
 } from "./config.js";
 
 // How each direction moves the head, as a change in x (columns) and y (rows).
@@ -112,14 +117,16 @@ export function placeFood(snake, random) {
  * Callers learn what happened by looking at the new state (for example,
  * `status` or `score`).
  *
- * Implemented so far: turning (FR-4), movement (FR-3), and wraparound (FR-5).
- * Still to come, each with its own tests first: food, scoring, collisions,
- * victory.
+ * Implemented so far: turning (FR-4), movement (FR-3), wraparound (FR-5),
+ * and eating: growth, scoring, levels, new food (FR-6, FR-7, FR-8).
+ * Still to come, each with its own tests first: collisions, victory.
  *
  * @param {object} game - The current game state.
+ * @param {() => number} [random=Math.random] - Used to place new food after
+ *   eating. Tests pass a predictable stand-in (design §5.3).
  * @returns {object} The game state after one step.
  */
-export function step(game) {
+export function step(game, random = Math.random) {
   // 1. Turn: if a turn is waiting, it becomes the direction for THIS step
   //    (FR-4). This must happen before the head moves, so the snake moves in
   //    the new direction straight away.
@@ -140,15 +147,62 @@ export function step(game) {
     y: wrap(head.y + dy, GRID_ROWS),
   };
 
-  // Move: put the new head on the front, and drop the last segment (the tail).
-  // `slice(0, -1)` returns a NEW array containing every segment except the
-  // last one. It doesn't change `game.snake`.
-  const snake = [newHead, ...game.snake.slice(0, -1)];
+  // 3. Will the snake eat? (The food can be null only after victory.)
+  const ateFood =
+    game.food !== null && newHead.x === game.food.x && newHead.y === game.food.y;
 
-  // Return a new state: copy every field of `game`, then replace the ones
-  // that changed. `remainingQueue` is a new array, so the old state's queue
-  // is never shared with or changed by the new state.
-  return { ...game, snake, direction, directionQueue: remainingQueue };
+  if (!ateFood) {
+    // 4. Normal move: put the new head on the front and drop the last
+    //    segment (the tail). `slice(0, -1)` returns a NEW array with every
+    //    segment except the last; it doesn't change `game.snake`.
+    const snake = [newHead, ...game.snake.slice(0, -1)];
+
+    // Return a new state: copy every field of `game`, then replace the ones
+    // that changed. `remainingQueue` is a new array, so the old state's queue
+    // is never shared with or changed by the new state.
+    return { ...game, snake, direction, directionQueue: remainingQueue };
+  }
+
+  // 5. Eating: put the new head on the front and KEEP the tail. That's how
+  //    the snake grows by one segment (FR-6).
+  const snake = [newHead, ...game.snake];
+
+  // 6. Score with the level BEFORE it rises (FR-8), then raise the level,
+  //    but never above MAX_LEVEL (FR-7). Math.min picks the smaller number.
+  const score = game.score + POINTS_PER_LEVEL * game.level;
+  const level = Math.min(game.level + 1, MAX_LEVEL);
+
+  // 7. New food, placed using the snake AFTER it has moved and grown, so the
+  //    food can't appear under the new head.
+  const food = placeFood(snake, random);
+
+  return {
+    ...game,
+    snake,
+    direction,
+    directionQueue: remainingQueue,
+    food,
+    score,
+    level,
+  };
+}
+
+/**
+ * Time between moves, in milliseconds, at a given speed level
+ * (FR-7, design §6, decision A2).
+ *
+ *   level 1 → 150 ms, each level × 0.94, never below 60 ms (reached at level 16)
+ *
+ * The interval is calculated from the level rather than stored in the game
+ * state, so the two can never disagree (single source of truth, design §3.1).
+ *
+ * @param {number} level - Speed level, 1 to MAX_LEVEL.
+ * @returns {number} Whole milliseconds between moves.
+ */
+export function stepInterval(level) {
+  // `**` means "to the power of": 0.94 ** 2 is 0.94 × 0.94.
+  const ms = Math.round(BASE_STEP_MS * SPEED_FACTOR ** (level - 1));
+  return Math.max(MIN_STEP_MS, ms); // Math.max picks the larger number
 }
 
 /**

@@ -12,9 +12,14 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createGame, step, queueTurn, placeFood } from "../js/game.js";
+import { createGame, step, queueTurn, placeFood, stepInterval } from "../js/game.js";
 
-import { GRID_COLUMNS, GRID_ROWS } from "../js/config.js";
+import {
+  GRID_COLUMNS,
+  GRID_ROWS,
+  MAX_LEVEL,
+  MIN_STEP_MS,
+} from "../js/config.js";
 
 // ── Test helpers ────────────────────────────────────────────────────────────
 
@@ -294,5 +299,99 @@ describe("food placement", () => {
     }
 
     assert.equal(placeFood(snake, () => 0), null);
+  });
+});
+
+// ── Eating: growth, scoring, levels (FR-6, FR-7, FR-8, design §5.2) ─────────
+// A new test game has its head at (10, 10) moving right, so food placed at
+// (11, 10) is eaten on the very next step.
+
+const FOOD_AHEAD = { x: 11, y: 10 };
+
+describe("eating", () => {
+  test("eating grows the snake by one segment: the tail stays", () => {
+    const next = step(gameWith({ food: FOOD_AHEAD }), alwaysZero);
+
+    assert.deepEqual(next.snake, [
+      { x: 11, y: 10 }, // new head, where the food was
+      { x: 10, y: 10 },
+      { x: 9, y: 10 },
+      { x: 8, y: 10 }, //  old tail: NOT removed this step, so length is now 4
+    ]);
+  });
+
+  test("eating at level 1 scores 10 and raises the level to 2", () => {
+    const next = step(gameWith({ food: FOOD_AHEAD }), alwaysZero);
+
+    assert.equal(next.score, 10);
+    assert.equal(next.level, 2);
+  });
+
+  test("points use the level BEFORE it increases (level 3 → +30, not +40)", () => {
+    const game = gameWith({ food: FOOD_AHEAD, level: 3, score: 50 });
+    const next = step(game, alwaysZero);
+
+    assert.equal(next.score, 80); // 50 + 10 × 3
+    assert.equal(next.level, 4);
+  });
+
+  test("at the maximum level, the level stops rising and each food stays at 160", () => {
+    const game = gameWith({ food: FOOD_AHEAD, level: MAX_LEVEL, score: 1000 });
+    const next = step(game, alwaysZero);
+
+    assert.equal(next.level, MAX_LEVEL); // still 16
+    assert.equal(next.score, 1160); //      1000 + 10 × 16
+  });
+
+  test("after eating, new food appears on an empty cell", () => {
+    // alwaysZero picks the first empty cell, (0, 0), which the snake isn't on.
+    const next = step(gameWith({ food: FOOD_AHEAD }), alwaysZero);
+
+    assert.deepEqual(next.food, { x: 0, y: 0 });
+  });
+
+  test("a step without eating changes no score, level, or food", () => {
+    const game = gameWith({ food: { x: 3, y: 3 }, level: 5, score: 200 });
+    const next = step(game, alwaysZero);
+
+    assert.equal(next.snake.length, 3); // no growth
+    assert.equal(next.score, 200);
+    assert.equal(next.level, 5);
+    assert.deepEqual(next.food, { x: 3, y: 3 });
+  });
+});
+
+// ── Speed (FR-7, design §6, decision A2) ────────────────────────────────────
+// stepInterval(level) = milliseconds between moves at that level.
+
+describe("speed", () => {
+  test("matches the approved speed table in design §6", () => {
+    const expected = { 1: 150, 2: 141, 3: 133, 5: 117, 8: 97, 10: 86, 12: 76, 15: 63, 16: 60 };
+
+    for (const [level, ms] of Object.entries(expected)) {
+      assert.equal(stepInterval(Number(level)), ms, `level ${level}`);
+    }
+  });
+
+  test("each level is about 5–8% faster than the one before (FR-7)", () => {
+    for (let level = 2; level <= MAX_LEVEL; level++) {
+      const speedUp = stepInterval(level - 1) / stepInterval(level);
+      assert.ok(
+        speedUp >= 1.05 && speedUp <= 1.08,
+        `level ${level - 1} → ${level} speed-up was ${speedUp.toFixed(3)}`,
+      );
+    }
+  });
+
+  test("top speed is exactly 2.5× the starting speed (FR-7)", () => {
+    assert.equal(stepInterval(1) / stepInterval(MAX_LEVEL), 2.5);
+  });
+
+  test("MAX_LEVEL in config.js agrees with the speed settings", () => {
+    // MAX_LEVEL must be the FIRST level that reaches the 60 ms floor.
+    // If someone changes SPEED_FACTOR or BASE_STEP_MS and forgets to update
+    // MAX_LEVEL, this test fails and points at the problem.
+    assert.equal(stepInterval(MAX_LEVEL), MIN_STEP_MS);
+    assert.ok(stepInterval(MAX_LEVEL - 1) > MIN_STEP_MS);
   });
 });
